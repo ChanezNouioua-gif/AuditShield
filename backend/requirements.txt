@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+pydantic-settings
+python-dotenv
+sqlalchemy
+alembic
+psycopg2-binary
+langchain
+langgraph
+langchain-openai
+chromadb
+dnspython
+httpx
+reportlab
+openpyxl
+sqlalchemy 
