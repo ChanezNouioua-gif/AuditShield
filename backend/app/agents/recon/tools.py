@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 CRTSH_URL = "https://crt.sh/"
 HTTP_TIMEOUT = 20.0
 DNS_TIMEOUT = 5.0
+WHOIS_TIMEOUT = 8.0
 
 # Selectors DKIM les plus répandus : DKIM ne peut pas être découvert sans
 # connaître le selector, on teste donc une liste de valeurs courantes.
@@ -281,17 +282,27 @@ def fetch_whois(domain: str) -> dict[str, Any]:
 
     Source peu fiable depuis le RGPD : les coordonnées sont souvent masquées.
     À traiter comme un complément d'information, jamais comme une base de décision.
+
+    python-whois n'expose pas de paramètre de timeout : sans le forcer au niveau
+    socket, un serveur WHOIS distant qui ne répond pas peut bloquer l'appel
+    indéfiniment (fréquent sur les réseaux d'entreprise qui filtrent le port 43).
     """
     try:
+        import socket
+
         import whois  # dépendance optionnelle : python-whois
     except ImportError:
         return {"available": False, "reason": "python-whois non installé"}
 
+    previous_timeout = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(WHOIS_TIMEOUT)
     try:
         data = whois.whois(domain)
     except Exception as exc:  # la lib lève des exceptions très variées
         logger.debug("WHOIS indisponible pour %s : %s", domain, exc)
         return {"available": False, "reason": str(exc)}
+    finally:
+        socket.setdefaulttimeout(previous_timeout)
 
     def _first(value: Any) -> Any:
         return value[0] if isinstance(value, list) and value else value
