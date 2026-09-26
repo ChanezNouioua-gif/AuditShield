@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import secrets
+from typing import Literal
 
 from langgraph.graph import END, StateGraph
 
@@ -24,11 +25,27 @@ from app.agents.state import AuditState
 logger = logging.getLogger(__name__)
 
 TOKEN_PREFIX = "auditshield-verify"
+VerificationMethod = Literal["dns_txt", "well_known"]
+DEFAULT_METHOD: VerificationMethod = "dns_txt"
 
 
 def _generate_token() -> str:
     """Génère un token unique et suffisamment long pour ne pas être devinable."""
     return f"{TOKEN_PREFIX}={secrets.token_hex(16)}"
+
+
+def _build_instructions(domain: str, token: str, method: VerificationMethod) -> str:
+    """Construit l'instruction de dépôt correspondant à la méthode choisie."""
+    if method == "well_known":
+        return (
+            f"Créez un fichier accessible à l'URL "
+            f"https://{domain}/.well-known/auditshield-verify.txt "
+            f"contenant uniquement : {token}"
+        )
+    return (
+        f"Ajoutez un enregistrement TXT sur _auditshield-verify.{domain} "
+        f"avec la valeur : {token}"
+    )
 
 
 def run_recon_node(state: AuditState) -> AuditState:
@@ -50,11 +67,11 @@ def run_recon_node(state: AuditState) -> AuditState:
 
 
 def request_verification_node(state: AuditState) -> AuditState:
-    """Génère le token de vérification et les instructions de dépôt.
+    """Génère le token de vérification selon la méthode choisie par le client.
 
-    Une seule méthode est proposée ici par défaut (DNS TXT) ; l'API peut
-    exposer l'alternative .well-known en présentant les deux formats de
-    preuve au client à partir du même token.
+    Le choix (`verification_method`) vient de l'API, elle-même remplie par le
+    client au moment de lancer l'audit. Sans choix explicite, on retombe sur
+    dns_txt — c'est la méthode qui ne dépend pas d'un déploiement web actif.
     """
     if state.get("status") == "failed":
         # Recon a échoué : inutile de proposer une vérification pour rien
@@ -62,21 +79,20 @@ def request_verification_node(state: AuditState) -> AuditState:
 
     domain = state["domain"]
     token = _generate_token()
+    method = state.get("verification_method", DEFAULT_METHOD)
+
+    if method not in ("dns_txt", "well_known"):
+        logger.warning("Méthode de vérification inconnue (%s), retour à %s", method, DEFAULT_METHOD)
+        method = DEFAULT_METHOD
 
     verification: dict = {
         "token": token,
-        "method": "dns_txt",
-        "instructions": (
-            f"Ajoutez un enregistrement TXT sur _auditshield-verify.{domain} "
-            f"avec la valeur : {token}\n"
-            f"Alternative : déposez un fichier à l'URL "
-            f"https://{domain}/.well-known/auditshield-verify.txt "
-            f"contenant uniquement : {token}"
-        ),
+        "method": method,
+        "instructions": _build_instructions(domain, token, method),
         "status": "pending",
     }
 
-    logger.info("ReconAgent : token de vérification généré pour %s", domain)
+    logger.info("ReconAgent : token de vérification (%s) généré pour %s", method, domain)
     return {**state, "verification": verification, "verified": False}
 
 
