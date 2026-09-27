@@ -15,14 +15,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.agents.recon.graph import build_recon_graph
+from app.agents.scan.graph import build_scan_graph
 from app.api.deps import get_db
 from app.core import models
 from app.core.schemas import AuditCreateRequest, AuditResponse, VerificationInfoResponse
 
 router = APIRouter()
 
-# Compilé une seule fois au chargement du module — pas à chaque requête.
+# Compilés une seule fois au chargement du module — pas à chaque requête.
 _recon_graph = build_recon_graph()
+_scan_graph = build_scan_graph()
 
 TOKEN_TTL_HOURS = 72
 
@@ -87,6 +89,46 @@ def create_audit(payload: AuditCreateRequest, db: Session = Depends(get_db)) -> 
     )
 
 
+@router.post("/{audit_id}/scan", response_model=AuditResponse)
+def launch_scan(audit_id: str, db: Session = Depends(get_db)) -> AuditResponse:
+    audit = db.get(models.Audit, audit_id)
+    if audit is None:
+        raise HTTPException(status_code=404, detail="Audit introuvable")
+
+    # La vérité vient de la base, jamais d'un booléen porté d'un appel HTTP à
+    # l'autre : c'est le statut `verified`, écrit par verification.py après un
+    # contrôle DNS/well-known réussi, qui autorise le scan actif.
+    if audit.status != models.AuditStatus.verified:
+        raise HTTPException(
+            status_code=409,
+            detail=f"L'audit doit être au statut 'verified' pour lancer le scan (statut actuel : {audit.status.value}).",
+        )
+
+    result = _scan_graph.invoke({"domain": audit.domain, "verified": True})
+
+    if result.get("status") == "failed" or "scan_results" not in result:
+        audit.status = models.AuditStatus.failed
+        db.commit()
+        detail = result.get("error") or "Erreur inconnue pendant le scan actif"
+        raise HTTPException(status_code=502, detail=f"Échec du scan : {detail}")
+
+    audit.scan_results = result["scan_results"]
+    audit.status = models.AuditStatus.triaging
+    db.commit()
+    db.refresh(audit)
+
+    return AuditResponse(
+        id=audit.id,
+        domain=audit.domain,
+        status=audit.status.value,
+        recon_results=audit.recon_results,
+        scan_results=audit.scan_results,
+        verification=None,
+        started_at=audit.started_at,
+        completed_at=audit.completed_at,
+    )
+
+
 @router.get("/{audit_id}", response_model=AuditResponse)
 def get_audit(audit_id: str, db: Session = Depends(get_db)) -> AuditResponse:
     audit = db.get(models.Audit, audit_id)
@@ -110,6 +152,7 @@ def get_audit(audit_id: str, db: Session = Depends(get_db)) -> AuditResponse:
         domain=audit.domain,
         status=audit.status.value,
         recon_results=audit.recon_results,
+        scan_results=audit.scan_results,
         verification=verification,
         started_at=audit.started_at,
         completed_at=audit.completed_at,

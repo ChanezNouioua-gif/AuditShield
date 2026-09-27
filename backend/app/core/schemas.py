@@ -23,9 +23,19 @@ class AuditResponse(BaseModel):
     domain: str
     status: str
     recon_results: dict[str, Any] | None = None
+    scan_results: dict[str, Any] | None = None
     verification: VerificationInfoResponse | None = None
     started_at: datetime
     completed_at: datetime | None = None
 
     class Config:
         from_attributes = True
+
+
+class VerificationCheckResponse(BaseModel):
+    audit_id: str
+    domain: str
+    method: Literal["dns_txt", "well_known"]
+    status: Literal["pending", "verified", "expired"]
+    verified: bool
+    message: str
