@@ -1,0 +1,83 @@
+# =========================
+# Environment / secrets
+# =========================
+
+.env
+.env.*
+!.env.example
+
+
+# =========================
+# Python
+# =========================
+
+__pycache__/
+*.py[cod]
+*.pyo
+
+.venv/
+venv/
+env/
+
+*.egg-info/
+dist/
+build/
+
+
+# =========================
+# Python tooling
+# =========================
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+
+# =========================
+# Databases
+# =========================
+
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+
+# =========================
+# ChromaDB / vector stores
+# =========================
+
+chroma_data/
+chroma/
+chroma_db/
+vectorstore/
+.vectordb/
+
+
+# =========================
+# Logs / temporary files
+# =========================
+
+*.log
+tmp/
+temp/
+
+
+# =========================
+# IDE
+# =========================
+
+.vscode/
+.idea/
+
+
+# =========================
+# OS
+# =========================
+
+.DS_Store
+Thumbs.db

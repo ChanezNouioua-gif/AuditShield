@@ -61,7 +61,10 @@ def route_from_dispatch(state: AuditState) -> str:
     # Stage courant
     # --------------------------------------------------------
 
-    stage = state.get("stage", "recon")
+    stage = state.get("stage")
+
+    if stage is None:
+      raise ValueError("AuditState invalide : stage manquant")
 
     # Première exécution
     if stage == "recon":
