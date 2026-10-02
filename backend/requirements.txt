@@ -15,3 +15,5 @@ reportlab
 openpyxl
 sqlalchemy 
 python-whois
+dnspython  
+chromadb

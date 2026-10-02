@@ -16,7 +16,7 @@ def _now():
 class AuditStatus(str, enum.Enum):
     pending = "pending"
     recon_only = "recon_only"
-    verified = "verified" 
+    verified = "verified"
     scanning = "scanning"
     triaging = "triaging"
     completed = "completed"
