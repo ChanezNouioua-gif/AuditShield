@@ -155,14 +155,22 @@ def _persist_orchestrator_result(
     # --------------------------------------------------------
 
     if "report" in result:
-        audit.report = (
-            result.get("report") or {}
-        )
+     report = dict(result.get("report") or {})
+     score_history_entries = report.pop("score_history_entries", [])
 
-        report = result.get("report") or {}
+     audit.report = report  # sans score_history_entries : plus d'objets datetime ici
 
-        if "global_score" in report:
-            audit.global_score = report["global_score"]
+     if "global_score" in report:
+        audit.global_score = report["global_score"]
+
+     for entry in score_history_entries:
+        db.add(models.ScoreHistory(
+            audit_id=entry["audit_id"],
+            domain=entry["domain"],
+            category=entry["category"],
+            score=entry["score"],
+            recorded_at=entry["recorded_at"],
+        ))
 
     # --------------------------------------------------------
     # Status
@@ -409,6 +417,7 @@ def create_audit(
         ),
         started_at=audit.started_at,
         completed_at=audit.completed_at,
+        report=audit.report,
     )
 
 
@@ -544,6 +553,7 @@ def launch_scan(
         verification=None,
         started_at=audit.started_at,
         completed_at=audit.completed_at,
+        report=audit.report,
     )
 
 
@@ -676,6 +686,7 @@ def launch_triage(
         verification=None,
         started_at=audit.started_at,
         completed_at=audit.completed_at,
+        report=audit.report,
     )
 
 
@@ -756,4 +767,5 @@ def get_audit(
         verification=verification,
         started_at=audit.started_at,
         completed_at=audit.completed_at,
+        report=audit.report,
     )

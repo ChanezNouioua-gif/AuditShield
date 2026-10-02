@@ -44,6 +44,7 @@ class AuditResponse(BaseModel):
     verification: VerificationInfoResponse | None = None
     started_at: datetime
     completed_at: datetime | None = None
+    report: dict[str, Any] | None = None
 
     class Config:
         from_attributes = True
