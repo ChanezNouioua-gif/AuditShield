@@ -70,6 +70,8 @@ class Audit(Base):
     verification_token_id = Column(String, ForeignKey("verification_tokens.id"))
     global_score = Column(Float)
     recon_results = Column(JSON)          # sortie brute du ReconAgent
+    scan_results = Column(JSON)           # sortie brute du ScanAgent
+    report = Column(JSON)    
     started_at = Column(DateTime(timezone=True), default=_now)
     completed_at = Column(DateTime(timezone=True))
 

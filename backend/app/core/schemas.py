@@ -18,12 +18,29 @@ class VerificationInfoResponse(BaseModel):
     status: Literal["pending", "verified", "expired"]
 
 
+class FindingResponse(BaseModel):
+    id: str
+    category: str
+    title: str
+    description: str | None = None
+    severity: float | None = None
+    business_priority: int | None = None
+    confidence: Literal["confirmed", "needs_manual_review"]
+    cve_id: str | None = None
+    evidence: dict[str, Any] | None = None
+    remediation: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
 class AuditResponse(BaseModel):
     id: str
     domain: str
     status: str
     recon_results: dict[str, Any] | None = None
     scan_results: dict[str, Any] | None = None
+    findings: list[FindingResponse] | None = None
     verification: VerificationInfoResponse | None = None
     started_at: datetime
     completed_at: datetime | None = None
