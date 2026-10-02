@@ -57,13 +57,13 @@ def run_recon_node(state: AuditState) -> AuditState:
         results = run_passive_recon(domain)
     except Exception as exc:  # une source externe indisponible ne doit pas planter le pipeline
         logger.error("ReconAgent : échec collecte pour %s : %s", domain, exc)
-        return {**state, "recon_results": {}, "status": "failed", "error": str(exc)}
+        return {**state,"recon_results": {}, "status": "failed","stage": "failed","error": str(exc),}
 
     logger.info(
         "ReconAgent : %d sous-domaine(s) trouvé(s), %d anomalie(s) DNS en suspens",
         results["subdomain_count"], len(results["dangling_dns"]),
     )
-    return {**state, "recon_results": results, "status": "recon_only", "error": None}
+    return { **state,"recon_results": results,"status": "recon_only","stage": "verification_pending","error": None,}
 
 
 def request_verification_node(state: AuditState) -> AuditState:
